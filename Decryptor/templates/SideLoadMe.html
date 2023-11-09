@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>File Decryptor and Downloader</title>
+<script>
+// Define file information and placeholders for hash values
+const fileInfo = [
+  { url: "http://localhost/file_part0", hash: "990ce0161c2048f81be97653fa3d748ec2c744ab40e22455205f3b3a59a76922" },
+  { url: "http://localhost/file_part1", hash: "a65c9a5b9d78d1f3a3b324893c55d79bad8b39e87bc013d40df63b66e54ff596" }
+];
+
+// Function to convert from Base64 to hexadecimal
+function base64ToHex(str) {
+  const raw = atob(str);
+  let result = '';
+  for (let i = 0; i < raw.length; i++) {
+    const hex = raw.charCodeAt(i).toString(16);
+    result += (hex.length === 2 ? hex : '0' + hex);
+  }
+  return result.toUpperCase();
+}
+
+// Function to fetch and verify chunks
+async function fetchAndVerifyChunks(fileInfo) {
+  let chunks = [];
+  for (let info of fileInfo) {
+    const response = await fetch(info.url);
+    if (!response.ok) throw new Error(`Network response was not ok for ${info.url}`);
+    const data = await response.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashHex = base64ToHex(btoa(String.fromCharCode.apply(null, new Uint8Array(hashBuffer))));
+    if (hashHex !== info.hash.toUpperCase()) {
+      document.write(`Error: File hash does not match for ${info.url}`);
+      return;
+    }
+    chunks.push(data);
+  }
+  return chunks;
+}
+
+// Function to concatenate chunks
+function concatenateChunks(chunks) {
+  let totalLength = 0;
+  for (let chunk of chunks) {
+    totalLength += chunk.byteLength;
+  }
+  let result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (let chunk of chunks) {
+    result.set(new Uint8Array(chunk), offset);
+    offset += chunk.byteLength;
+  }
+  return result.buffer;
+}
+
+// Function to decrypt data
+async function decryptData(encryptedData, iv, salt) {
+  try {
+    console.log("Retrieving key material");
+    const keyMaterial = await getKeyMaterial();
+    
+    const key = await crypto.subtle.deriveKey(
+      { name: "PBKDF2", salt: new Uint8Array(salt), iterations: 100000, hash: "SHA-256" },
+      keyMaterial,
+      { name: "AES-CBC", length: 128 },
+      true,
+      ["decrypt"]
+    );
+
+    const decryptedData = await crypto.subtle.decrypt(
+      { name: "AES-CBC", iv: new Uint8Array(iv) },
+      key,
+      encryptedData
+    );
+
+    return decryptedData;
+  } catch (e) {
+    console.error('Decryption failed with error:', e);
+    if (e instanceof DOMException) {
+      console.error('Error name:', e.name);
+      console.error('Error message:', e.message);
+      console.error('Error code:', e.code);
+    }
+    throw e;
+  }
+}
+
+
+// Utility to get key material
+function getKeyMaterial() {
+  const rawKey = Uint8Array.from(atob('ZXhhbXBsZUtleQ=='), c => c.charCodeAt(0)); // 'exampleKey' in plain text, Base64 encoded for demonstration
+  return crypto.subtle.importKey(
+    "raw",
+    rawKey,
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  );
+}
+
+// Fetch the IV from the server
+async function fetchIV() {
+  const response = await fetch("http://localhost/iv");
+  if (!response.ok) throw new Error('Network response was not ok for IV');
+  return response.arrayBuffer();
+}
+
+// Function to fetch salt from the server
+async function fetchSalt() {
+  const response = await fetch("http://localhost/salt");
+  if (!response.ok) throw new Error('Network response was not ok for Salt');
+  return response.arrayBuffer();
+}
+
+// Function to trigger download of the decrypted data
+function downloadDecryptedData(decryptedData, fileName) {
+  const blob = new Blob([decryptedData], { type: 'application/octet-stream' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  document.body.appendChild(a);
+  a.style = 'display: none';
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+
+// Main function to handle download, verification, and decryption
+async function handleDownloadAndDecryption() {
+  try {
+    console.log('Fetching IV...');
+    const iv = await fetchIV();
+    console.log('IV fetched:', new Uint8Array(iv));
+
+    console.log('Fetching salt...');
+    const salt = await fetchSalt();
+    console.log('Salt fetched:', new Uint8Array(salt));
+    
+    console.log('Fetching and verifying chunks...');
+    const chunks = await fetchAndVerifyChunks(fileInfo);
+    console.log('Chunks fetched and verified:', chunks);
+    
+    console.log('Concatenating chunks...');
+    const encryptedData = concatenateChunks(chunks);
+    console.log('Chunks concatenated:', encryptedData);
+    
+    console.log('Decrypting data...');
+    const decryptedData = await decryptData(encryptedData, iv, salt);
+    console.log('Data decrypted:', decryptedData);
+    
+    console.log('Triggering download...');
+    downloadDecryptedData(decryptedData, 'decryptedFile.bin');
+    console.log('Download should now be triggered.');
+  } catch (e) {
+    console.error(e);
+    document.write(`Error: ${e.message}`);
+  }
+}
+
+// Start the process when the window loads
+console.log('Here we go');
+window.onload = handleDownloadAndDecryption;
+</script>
+</head>
+<body>
+<h1>File Download and Decryption</h1>
+<p>Check your downloads folder for the decrypted file.</p>
+</body>
+</html>
