@@ -1,10 +1,14 @@
+"""
+Contains functions related to slicing and encrypting the supplied file for delivery
+"""
+import configparser
+import sys
+import os
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto.Util.Padding import pad
 from Crypto.Protocol.KDF import PBKDF2
-import configparser
-import sys
-import os
+
 
 # Read the configuration
 config = configparser.ConfigParser()
@@ -12,8 +16,46 @@ config.read('../../config.ini')
 num_files = int(config['DEFAULT']['NumberOfFiles'])
 password = config['DEFAULT']['EncryptionKey'].encode()  #
 
+
+DOWNLOAD_DIRECTORY = '../../Decryptor/Downloads'
+# Ensure the base directory exists, if not, create it
+os.makedirs(DOWNLOAD_DIRECTORY, exist_ok=True)
+parts_directory = os.path.join(DOWNLOAD_DIRECTORY, 'parts')
+os.makedirs(parts_directory, exist_ok=True)
+
+PIZZA_SLICE_ART = '''
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣀⣀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣷⡄
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⡇
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⡿⠃
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⣷⣆⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⣀⡀⠀⠀⠀⠀⣹⣿⣿⣿⣿⣿⣿⡿⠋⠀⠀⠀⠀⠀⠀
+⠀⠀⢀⣠⣶⣿⣿⣿⣿⣿⣶⣦⣾⣿⡿⠟⢿⣿⣿⣏⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⣠⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡀⠀⠀⠙⢿⣿⠗⠀⠀⠀⠀⠀⠀⠀
+⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⢸⣿⣿⣿⣿⣿⡏⠀⠈⣿⣿⣿⣿⣿⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⢸⣿⣿⣿⣿⣿⣿⣶⣾⣿⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠙⠻⣿⣿⣿⣿⣿⣿⣿⡿⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠉⠉⠉⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+        '''
+
+def print_usage():
+    '''Prints the expected usage'''
+
+    print("Slice")
+    print("Usage: python slice.py <file_to_encrypt>")
+    sys.exit(1)
+
+# Check if the correct number of arguments are provided
+if len(sys.argv) != 2:
+    print_usage()
+
 # Arguments from command line
 file_path = sys.argv[1]
+
+print(PIZZA_SLICE_ART)
 
 # Read binary file
 with open(file_path, 'rb') as file:
@@ -36,7 +78,7 @@ with open('../../Decryptor/Downloads/iv.bin', 'wb') as iv_file:
 with open('../../Decryptor/Downloads/salt.bin', 'wb') as salt_file:
     salt_file.write(salt)
 
-# Write encrypted file without the IV
+
 enc_file_path = f'{file_path}.enc'
 with open(enc_file_path, 'wb') as enc_file:
     enc_file.write(ciphertext)
@@ -55,11 +97,14 @@ for i in range(num_files):
         # Read the chunk
         chunk_data = enc_file.read(part_size)
         # Write the chunk to a new part file
-        with open(f'{file_path}_part{i}', 'wb') as part_file:
-            print(f"Saving " + file_path)
+
+        part_file_path = os.path.join(parts_directory, f'{file_path}_part{i}')
+        with open(part_file_path, 'wb') as part_file:
+            print(f"Saving {part_file_path}")
             part_file.write(chunk_data)
 
+
 print(f"Encrypted file split into {num_files} parts.")
-print(f"IV saved to iv.bin.")
+print("IV saved to iv.bin.")
 print(f"Key is %s " % password)
-print(f"salt saved to salt.bin.")
+print("salt saved to salt.bin.")

@@ -4,172 +4,148 @@
 <meta charset="UTF-8">
 <title>File Decryptor and Downloader</title>
 <script>
-// Define file information and placeholders for hash values
-const fileInfo = [
-  {% for part, hash in file_parts.items() %}
-  { url: "http://{{ server_hostname }}/{{ file_guid }}/{{ part }}", hash: "{{ hash }}" },
-  {% endfor %}
-];
+// Wait for the DOM to be fully loaded before executing the script
+document.addEventListener('DOMContentLoaded', (event) => {
+  // Define file information and placeholders for hash values
+  const fileInfo = [
+    // Server-rendered array of file parts and their respective hash values
+    {% for part, hash in file_parts.items() %}
+    { url: "http://{{ server_hostname }}/{{ file_guid }}/{{ part }}", hash: "{{ hash }}" },
+    {% endfor %}
+  ];
 
-// Function to convert from Base64 to hexadecimal
-function base64ToHex(str) {
-  const raw = atob(str);
-  let result = '';
-  for (let i = 0; i < raw.length; i++) {
-    const hex = raw.charCodeAt(i).toString(16);
-    result += (hex.length === 2 ? hex : '0' + hex);
-  }
-  return result.toUpperCase();
-}
-
-// Function to fetch and verify chunks
-async function fetchAndVerifyChunks(fileInfo) {
-  let chunks = [];
-  for (let info of fileInfo) {
-    const response = await fetch(info.url);
-    if (!response.ok) throw new Error(`Network response was not ok for ${info.url}`);
-    const data = await response.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashHex = base64ToHex(btoa(String.fromCharCode.apply(null, new Uint8Array(hashBuffer))));
-    if (hashHex !== info.hash.toUpperCase()) {
-      document.write(`Error: File hash does not match for ${info.url}`);
-      return;
+  // Function to convert from Base64 to hexadecimal
+  function base64ToHex(str) {
+    // Decode a base64 string and convert it to a hexadecimal string
+    const raw = atob(str);
+    let result = '';
+    for (let i = 0; i < raw.length; i++) {
+      const hex = raw.charCodeAt(i).toString(16);
+      result += (hex.length === 2 ? hex : '0' + hex);
     }
-    chunks.push(data);
+    return result.toUpperCase();
   }
-  return chunks;
-}
 
-// Function to concatenate chunks
-function concatenateChunks(chunks) {
-  let totalLength = 0;
-  for (let chunk of chunks) {
-    totalLength += chunk.byteLength;
-  }
-  let result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (let chunk of chunks) {
-    result.set(new Uint8Array(chunk), offset);
-    offset += chunk.byteLength;
-  }
-  return result.buffer;
-}
-
-// Function to decrypt data
-async function decryptData(encryptedData, iv, salt) {
-  try {
-    console.log("Retrieving key material");
-    const keyMaterial = await getKeyMaterial();
-    console.log("Retrived key material");
-
-    console.log("Deriving key");
-    const key = await crypto.subtle.deriveKey(
-      { name: "PBKDF2", salt: new Uint8Array(salt), iterations: 100000, hash: "SHA-256" },
-      keyMaterial,
-      { name: "AES-CBC", length: 128 },
-      true,
-      ["decrypt"]
-    );
-    console.log("key Derived from" + keyMaterial);
-
-    console.log("Decrypting");
-    const decryptedData = await crypto.subtle.decrypt(
-      { name: "AES-CBC", iv: new Uint8Array(iv) },
-      key,
-      encryptedData
-    );
-
-    return decryptedData;
-  } catch (e) {
-    console.error('Decryption failed with error:', e);
-    downloadData(encryptedData, 'encryptedData') // Assumes we have the encrypted data
-    downloadData(iv, "iv")
-    downloadData(salt, "salt")
-    if (e instanceof DOMException) {
-      console.error('Error name:', e.name);
-      console.error('Error message:', e.message);
-      console.error('Error code:', e.code);
+  // Function to fetch and verify chunks
+  async function fetchAndVerifyChunks(fileInfo) {
+    // Retrieve each chunk of the file, verify its hash, and collect them
+    let chunks = [];
+    for (let info of fileInfo) {
+      const response = await fetch(info.url);
+      if (!response.ok) throw new Error(`Network response was not ok for ${info.url}`);
+      const data = await response.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashHex = base64ToHex(btoa(String.fromCharCode.apply(null, new Uint8Array(hashBuffer))));
+      if (hashHex !== info.hash.toUpperCase()) {
+        throw new Error(`File hash does not match for ${info.url}`);
+      }
+      chunks.push(data);
     }
-    throw e;
+    return chunks;
   }
-}
 
-
-// Utility to get key material
-function getKeyMaterial() {
-  const rawKey = Uint8Array.from(atob('{{ encoded_key }}'), c => c.charCodeAt(0));
-  return crypto.subtle.importKey(
-    "raw",
-    rawKey,
-    { name: "PBKDF2" },
-    false,
-    ["deriveKey"]
-  );
-}
-
-// Fetch the IV from the server
-async function fetchIV() {
-  const response = await fetch(`http://localhost/{{ file_guid }}/iv`);
-  if (!response.ok) throw new Error('Network response was not ok for IV');
-  return response.arrayBuffer();
-}
-
-// Function to fetch salt from the server
-async function fetchSalt() {
-  const response = await fetch(`http://localhost/{{ file_guid }}/salt`);
-  if (!response.ok) throw new Error('Network response was not ok for Salt');
-  return response.arrayBuffer();
-}
-
-
-// Function to trigger download of the decrypted data
-function downloadData(data, fileName) {
-  const blob = new Blob([data], { type: 'application/octet-stream' });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  document.body.appendChild(a);
-  a.style = 'display: none';
-  a.href = url;
-  a.download = fileName;
-  a.click();
-  window.URL.revokeObjectURL(url);
-}
-
-// Main function to handle download, verification, and decryption
-async function handleDownloadAndDecryption() {
-  try {
-    console.log('Fetching IV...');
-    const iv = await fetchIV();
-    console.log('IV fetched:', new Uint8Array(iv));
-
-    console.log('Fetching salt...');
-    const salt = await fetchSalt();
-    console.log('Salt fetched:', new Uint8Array(salt));
-    
-    console.log('Fetching and verifying chunks...');
-    const chunks = await fetchAndVerifyChunks(fileInfo);
-    console.log('Chunks fetched and verified:', chunks);
-    
-    console.log('Concatenating chunks...');
-    const encryptedData = concatenateChunks(chunks);
-    console.log('Chunks concatenated:', encryptedData);
-    
-    console.log('Decrypting data...');
-    const decryptedData = await decryptData(encryptedData, iv, salt);
-    console.log('Data decrypted:', decryptedData);
-    
-    console.log('Triggering download...');
-    downloadData(decryptedData, '{{ download_name}}');
-    console.log('Download should now be triggered.');
-  } catch (e) {
-    console.error(e);
-    document.write(`Error: ${e.message}`);
+  // Function to concatenate chunks
+  function concatenateChunks(chunks) {
+    // Combine all the chunks into one ArrayBuffer
+    let totalLength = 0;
+    for (let chunk of chunks) {
+      totalLength += chunk.byteLength;
+    }
+    let result = new Uint8Array(totalLength);
+    let offset = 0;
+    for (let chunk of chunks) {
+      result.set(new Uint8Array(chunk), offset);
+      offset += chunk.byteLength;
+    }
+    return result.buffer;
   }
-}
 
-// Start the process when the window loads
-console.log('Here we go');
-window.onload = handleDownloadAndDecryption;
+  // Function to decrypt data
+  async function decryptData(encryptedData, iv, salt) {
+    // Decrypt the data with AES-CBC using the derived key from PBKDF2
+    try {
+      const keyMaterial = await getKeyMaterial();
+      const key = await crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: new Uint8Array(salt), iterations: 100000, hash: "SHA-256" },
+        keyMaterial,
+        { name: "AES-CBC", length: 128 },
+        true,
+        ["decrypt"]
+      );
+      return await crypto.subtle.decrypt(
+        { name: "AES-CBC", iv: new Uint8Array(iv) },
+        key,
+        encryptedData
+      );
+    } catch (e) {
+      // Handle decryption errors and trigger download of raw data for troubleshooting
+      console.error('Decryption failed:', e);
+      downloadData(encryptedData, 'encryptedData'); // Assumes you have the encrypted data
+      downloadData(iv, "iv");
+      downloadData(salt, "salt");
+      throw e;
+    }
+  }
+
+  // Utility to get key material from the encoded key
+  function getKeyMaterial() {
+    // Import key material using the server-rendered encoded key
+    const rawKey = Uint8Array.from(atob('{{ encoded_key }}'), c => c.charCodeAt(0));
+    return crypto.subtle.importKey(
+      "raw",
+      rawKey,
+      { name: "PBKDF2" },
+      false,
+      ["deriveKey"]
+    );
+  }
+
+  // Fetch the IV and salt from the server
+  async function fetchIVAndSalt() {
+    // Fetch the initialization vector (IV) and salt for the decryption process
+    const iv = await fetchArrayBuffer(`http://localhost/{{ file_guid }}/iv`, 'IV');
+    const salt = await fetchArrayBuffer(`http://localhost/{{ file_guid }}/salt`, 'Salt');
+    return { iv, salt };
+  }
+
+  // Helper function to fetch array buffer from server
+  async function fetchArrayBuffer(url, name) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Network response was not ok for ${name}`);
+    return response.arrayBuffer();
+  }
+
+  // Function to trigger download of the decrypted data
+  function downloadData(data, fileName) {
+    // Create a blob from the data and trigger a download
+    const blob = new Blob([data], { type: 'application/octet-stream' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    document.body.appendChild(a);
+    a.style = 'display: none';
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  // Main function to handle download, verification, and decryption
+  async function handleDownloadAndDecryption() {
+    try {
+      const { iv, salt } = await fetchIVAndSalt();
+      const chunks = await fetchAndVerifyChunks(fileInfo);
+      const encryptedData = concatenateChunks(chunks);
+      const decryptedData = await decryptData(encryptedData, iv, salt);
+      downloadData(decryptedData, '{{ download_name}}');
+    } catch (e) {
+      console.error(e);
+      document.body.textContent = `Error: ${e.message}`;
+    }
+  }
+
+  // Start the decryption process
+  handleDownloadAndDecryption();
+});
 </script>
 </head>
 <body>
