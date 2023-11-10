@@ -1,6 +1,6 @@
  **Slice-N-Dice**
 
-A toolkit for secure file encryption, slicing, and transfer for red team operations, making the task of blue teams more complex by splitting data streams.
+A toolkit for secure file encryption, slicing, and transfer for red team like operations, making the task of blue teams more complex by splitting data streams.
 
 ## Repository Structure
 
