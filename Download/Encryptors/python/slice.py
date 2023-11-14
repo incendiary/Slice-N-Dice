@@ -41,12 +41,17 @@ PIZZA_SLICE_ART = '''
 ⠀⠀⠀⠀⠀⠉⠉⠉⠉⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
         '''
 
+
 def print_usage():
-    '''Prints the expected usage'''
+    """
+    Prints the expected usage
+    :return:
+    """
 
     print("Slice")
     print("Usage: python slice.py <file_to_encrypt>")
     sys.exit(1)
+
 
 # Check if the correct number of arguments are provided
 if len(sys.argv) != 2:
@@ -63,7 +68,13 @@ with open(file_path, 'rb') as file:
 
 # Key derivation
 salt = os.urandom(16)  # Should be securely generated and consistent for decryption
+key: bytes
 key = PBKDF2(password, salt, dkLen=16, count=100000, hmac_hash_module=SHA256)
+print(f"Type of key: {type(key)}")
+# Check the type of key and exit if not bytes
+if not isinstance(key, bytes):
+    print("Error: Key is not of byte type.")
+    sys.exit(1)
 
 # Encryption
 iv = os.urandom(16)
@@ -106,5 +117,5 @@ for i in range(num_files):
 
 print(f"Encrypted file split into {num_files} parts.")
 print("IV saved to iv.bin.")
-print(f"Key is %s " % password)
+print(f"Key is {password}")
 print("salt saved to salt.bin.")

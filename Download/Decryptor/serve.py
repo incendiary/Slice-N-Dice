@@ -27,6 +27,7 @@ FILE_GUID = str(uuid.uuid4())
 
 encoded_key = base64.b64encode(key.encode('utf-8')).decode('utf-8')
 
+
 def compute_hash(file_path):
     """
     Compute the SHA-256 hash of a file.
@@ -42,6 +43,7 @@ def compute_hash(file_path):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_sha256.update(chunk)
     return hash_sha256.hexdigest()
+
 
 @app.after_request
 def add_header(response):
@@ -59,6 +61,7 @@ def add_header(response):
     response.headers["Expires"] = "0"
     return response
 
+
 @app.route('/')
 def index():
     """
@@ -71,10 +74,19 @@ def index():
     file_parts = {part: compute_hash(os.path.join(
         DOWNLOADS_PATH, part)) for part in os.listdir(DOWNLOADS_PATH)}
     sorted_file_parts = dict(sorted(file_parts.items(),
-                                    key=lambda item: int(re.search(r'part(\d+)', item[0]).group(1))))
+                                    key=lambda item: int(re.search(r'part(\d+)',
+                                                                   item[0]).group(1)
+                                                         )
+                                    )
+                             )
 
-    return render_template('sideloadme.html', server_hostname=server_hostname, file_parts=sorted_file_parts,
-                           file_guid=FILE_GUID, encoded_key=encoded_key, download_name=download_name)
+    return render_template('SideLoadMe.html',
+                           server_hostname=server_hostname,
+                           file_parts=sorted_file_parts,
+                           file_guid=FILE_GUID,
+                           encoded_key=encoded_key,
+                           download_name=download_name)
+
 
 @app.route('/<uid>/<path:filename>')
 def serve_file_part(uid, filename):
@@ -100,6 +112,8 @@ def serve_file_part(uid, filename):
     # Check if file exists
     if os.path.isfile(file_path):
         return send_file(file_path, mimetype='application/octet-stream')
+    return None
+
 
 # Serve the IV and Salt files, with added directory traversal protection
 @app.route('/<uid>/iv')
@@ -119,6 +133,7 @@ def get_iv(uid):
     iv_path = os.path.join('Downloads', 'iv.bin')
     return send_file(iv_path, mimetype='application/octet-stream')
 
+
 @app.route('/<uid>/salt')
 def get_salt(uid):
     """
@@ -136,20 +151,22 @@ def get_salt(uid):
     salt_path = os.path.join('Downloads', 'salt.bin')
     return send_file(salt_path, mimetype='application/octet-stream')
 
-# Print all the routes for the Flask app
-def print_routes(app):
+
+# Print all the routes for the Flask flask_app
+def print_routes(flask_app):
     """
-    Print all registered routes in the Flask app.
+    Print all registered routes in the Flask flask_app.
 
     Args:
-        app: The Flask app.
+        flask_app: The Flask flask_app.
     """
     print("Registered routes:")
-    for rule in app.url_map.iter_rules():
+    for rule in flask_app.url_map.iter_rules():
         print(f"{rule.endpoint}: {rule}")
+
 
 if __name__ == '__main__':
     print("GID Generated is: " + FILE_GUID)
-    print("Key Info - Value: %s, Encoded Value:%s" % (key, encoded_key))
+    print(f"Key Info - Value: {key}, Encoded Value:{encoded_key}")
     print_routes(app)  # This will print all routes
     app.run(port=int(config['SERVER']['Port']), debug=config['SERVER'].getboolean('DebugMode'))
