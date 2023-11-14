@@ -21,13 +21,15 @@ app.secret_key = str(uuid.uuid4())
 config = configparser.ConfigParser()
 config.read('config.ini')
 server_hostname = config['DEFAULT']['ServerHostname']
-key = config['DEFAULT']['EncryptionKey']
+
 UPLOAD_DIRECTORY = config['DEFAULT']['UploadDirectory']
 NUMBEROFFILES = int(config['DEFAULT']['NumberOfFiles'])
 # Generate a unique FileGUID when the server starts
 RUN_GUID = str(uuid.uuid4())
+USER_SUPPLIED_KEY = None  # Initialize the key variable
 
-encoded_key = base64.b64encode(key.encode('utf-8')).decode('utf-8')
+
+
 os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_DIRECTORY, RUN_GUID), exist_ok=True)
 
@@ -44,6 +46,8 @@ def decrypt_file_part(file_path, decrypting_key, iv):
         Returns:
             bytes: The decrypted data of the file part.
         """
+
+
     with open(file_path, 'rb') as encrypted_file:
         encrypted_data = encrypted_file.read()
         cipher = AES.new(decrypting_key, AES.MODE_CBC, iv)
@@ -87,6 +91,9 @@ def derive_key(salt, password="exampleKey", iterations=100000, dk_len=16):
     password_bytes = password.encode('utf-8')
     derived_key = PBKDF2(password_bytes, salt, dkLen=dk_len,
                          count=iterations, hmac_hash_module=SHA256)
+    # Convert to base64 and log
+    base64_key = base64.b64encode(derived_key).decode('utf-8')
+    print("Derived Key (Base64):", base64_key)
     return derived_key
 
 
@@ -145,6 +152,90 @@ def recombine_file(original_file_name, total_parts):
             # os.remove(part_path)
 
 
+
+
+def process_file_parts(original_file_name):
+    """
+    Process each part of the file for decryption.
+
+    Args:
+        original_file_name (str): The original name of the file.
+
+    Returns:
+        list: A list containing decrypted data for each file part.
+    """
+    decrypted_parts = []
+    for i in range(NUMBEROFFILES):
+        part_path, iv_path, salt_path = get_file_paths(original_file_name, i)
+        iv, salt = read_iv_and_salt(iv_path, salt_path)
+        derived_key = derive_key(salt, USER_SUPPLIED_KEY)
+        decrypted_data = decrypt_file_part(part_path, derived_key, iv)
+        decrypted_parts.append(decrypted_data)
+    return decrypted_parts
+
+
+def get_file_paths(original_file_name, part_index):
+    """
+    Generate file paths for the part file, iv file, and salt file.
+
+    Args:
+        original_file_name (str): The original name of the file.
+        part_index (int): The index of the part file.
+
+    Returns:
+        tuple: A tuple containing paths for the part file, iv file, and salt file.
+    """
+    part_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_part_{part_index}")
+    iv_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_iv")
+    salt_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_salt")
+    return part_path, iv_path, salt_path
+
+
+def read_iv_and_salt(iv_path, salt_path):
+    """
+    Read the initialization vector and salt from their respective files.
+
+    Args:
+        iv_path (str): Path to the IV file.
+        salt_path (str): Path to the salt file.
+
+    Returns:
+        tuple: A tuple containing the IV and salt.
+    """
+    with open(iv_path, 'rb') as iv_file, open(salt_path, 'rb') as salt_file:
+        iv = iv_file.read()
+        salt = salt_file.read()
+    return iv, salt
+
+
+
+@app.route('/upload/key', methods=['POST'])
+def upload_key():
+    """
+    Receive and store the encryption key.
+    """
+    global USER_SUPPLIED_KEY  # Define a global variable to store the key
+    USER_SUPPLIED_KEY = request.data.decode('utf-8')  # Get the key from the request body
+    print(f"Received key: {USER_SUPPLIED_KEY}")
+    return 'Key received', 200
+
+@app.route('/')
+def index():
+    """
+    Render the index page of the application.
+
+    This route renders the main page of the application, displaying file
+    information and upload instructions.
+
+    Returns:
+        str: The rendered HTML for the index page.
+    """
+    return render_template('index.html',
+                           server_hostname=server_hostname,
+                           file_guid=RUN_GUID,
+                           number_of_files=NUMBEROFFILES)
+
+
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_file():
     """
@@ -188,8 +279,10 @@ def upload_file():
         return 'File part uploaded successfully', 200
 
     upload_url = url_for('upload_file')
-    return render_template('upload.html', number_of_files=NUMBEROFFILES,
-                           server_hostname=server_hostname, upload_url=upload_url, key=key)
+    return render_template('upload.html',
+                           number_of_files=NUMBEROFFILES,
+                           server_hostname=server_hostname,
+                           upload_url=upload_url)
 
 
 @app.route('/upload/complete')
@@ -219,79 +312,7 @@ def complete_upload():
 
     return 'File recombination complete', 200
 
-
-def process_file_parts(original_file_name):
-    """
-    Process each part of the file for decryption.
-
-    Args:
-        original_file_name (str): The original name of the file.
-
-    Returns:
-        list: A list containing decrypted data for each file part.
-    """
-    decrypted_parts = []
-    for i in range(NUMBEROFFILES):
-        part_path, iv_path, salt_path = get_file_paths(original_file_name, i)
-        iv, salt = read_iv_and_salt(iv_path, salt_path)
-        derived_key = derive_key(salt)
-        decrypted_data = decrypt_file_part(part_path, derived_key, iv)
-        decrypted_parts.append(decrypted_data)
-    return decrypted_parts
-
-
-def get_file_paths(original_file_name, part_index):
-    """
-    Generate file paths for the part file, iv file, and salt file.
-
-    Args:
-        original_file_name (str): The original name of the file.
-        part_index (int): The index of the part file.
-
-    Returns:
-        tuple: A tuple containing paths for the part file, iv file, and salt file.
-    """
-    part_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_part_{part_index}")
-    iv_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_iv")
-    salt_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_salt")
-    return part_path, iv_path, salt_path
-
-
-def read_iv_and_salt(iv_path, salt_path):
-    """
-    Read the initialization vector and salt from their respective files.
-
-    Args:
-        iv_path (str): Path to the IV file.
-        salt_path (str): Path to the salt file.
-
-    Returns:
-        tuple: A tuple containing the IV and salt.
-    """
-    with open(iv_path, 'rb') as iv_file, open(salt_path, 'rb') as salt_file:
-        iv = iv_file.read()
-        salt = salt_file.read()
-    return iv, salt
-
-
-@app.route('/')
-def index():
-    """
-    Render the index page of the application.
-
-    This route renders the main page of the application, displaying file
-    information and upload instructions.
-
-    Returns:
-        str: The rendered HTML for the index page.
-    """
-    return render_template('index.html', server_hostname=server_hostname,
-                           file_guid=RUN_GUID, encoded_key=encoded_key,
-                           number_of_files=NUMBEROFFILES)
-
-
 if __name__ == '__main__':
     print("GID Generated is: " + RUN_GUID)
-    print(f"Key Info - Value: {key}, Encoded Value:{encoded_key}")
     print_routes(app)  # This will print all routes
     app.run(port=int(config['SERVER']['Port']), debug=config['SERVER'].getboolean('DebugMode'))
