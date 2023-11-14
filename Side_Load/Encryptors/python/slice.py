@@ -68,8 +68,7 @@ with open(file_path, 'rb') as file:
 
 # Key derivation
 salt = os.urandom(16)  # Should be securely generated and consistent for decryption
-key: bytes
-key = PBKDF2(password, salt, dkLen=16, count=100000, hmac_hash_module=SHA256)
+key: bytes = PBKDF2(password, salt, dkLen=16, count=100000, hmac_hash_module=SHA256)
 print(f"Type of key: {type(key)}")
 # Check the type of key and exit if not bytes
 if not isinstance(key, bytes):

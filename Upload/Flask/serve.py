@@ -14,7 +14,6 @@ from flask import Flask, render_template, request, url_for
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-# flask_app.secret_key = 'your_secret_key'  # Needed for session management and flash messaging
 app.secret_key = str(uuid.uuid4())
 
 # Read the configuration
