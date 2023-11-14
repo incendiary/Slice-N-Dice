@@ -28,8 +28,6 @@ NUMBEROFFILES = int(config['DEFAULT']['NumberOfFiles'])
 RUN_GUID = str(uuid.uuid4())
 USER_SUPPLIED_KEY = None  # Initialize the key variable
 
-
-
 os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_DIRECTORY, RUN_GUID), exist_ok=True)
 
@@ -46,7 +44,6 @@ def decrypt_file_part(file_path, decrypting_key, iv):
         Returns:
             bytes: The decrypted data of the file part.
         """
-
 
     with open(file_path, 'rb') as encrypted_file:
         encrypted_data = encrypted_file.read()
@@ -152,8 +149,6 @@ def recombine_file(original_file_name, total_parts):
             # os.remove(part_path)
 
 
-
-
 def process_file_parts(original_file_name):
     """
     Process each part of the file for decryption.
@@ -208,7 +203,6 @@ def read_iv_and_salt(iv_path, salt_path):
     return iv, salt
 
 
-
 @app.route('/upload/key', methods=['POST'])
 def upload_key():
     """
@@ -218,6 +212,7 @@ def upload_key():
     USER_SUPPLIED_KEY = request.data.decode('utf-8')  # Get the key from the request body
     print(f"Received key: {USER_SUPPLIED_KEY}")
     return 'Key received', 200
+
 
 @app.route('/')
 def index():
@@ -311,6 +306,7 @@ def complete_upload():
             output_file.write(part_data)
 
     return 'File recombination complete', 200
+
 
 if __name__ == '__main__':
     print("GID Generated is: " + RUN_GUID)
