@@ -103,8 +103,8 @@ document.addEventListener('DOMContentLoaded', (event) => {
   // Fetch the IV and salt from the server
   async function fetchIVAndSalt() {
     // Fetch the initialization vector (IV) and salt for the decryption process
-    const iv = await fetchArrayBuffer(`http://localhost/{{ file_guid }}/iv`, 'IV');
-    const salt = await fetchArrayBuffer(`http://localhost/{{ file_guid }}/salt`, 'Salt');
+    const iv = await fetchArrayBuffer(`http://{{ server_hostname }}/{{ file_guid }}/iv`, 'IV');
+    const salt = await fetchArrayBuffer(`http://{{ server_hostname }}/{{ file_guid }}/salt`, 'Salt');
     return { iv, salt };
   }
 

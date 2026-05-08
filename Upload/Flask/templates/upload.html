@@ -25,10 +25,6 @@
         const exportedKey = await crypto.subtle.exportKey("raw", derivedKey);
         const base64DerivedKey = btoa(String.fromCharCode(...new Uint8Array(exportedKey)));
 
-        console.log('KeyInformation - userSuppliedKey:', userSuppliedKey);
-        console.log('KeyInformation - derivedKey:', derivedKey);
-        console.log('KeyInformation - base64DerivedKey:', base64DerivedKey);
-
         return derivedKey;
     }
 
