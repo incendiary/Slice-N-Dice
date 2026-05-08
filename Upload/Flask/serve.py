@@ -1,7 +1,13 @@
 """
 This module contains a Flask application for receiving Split and Encrypted files.
+
+TODO:
+
+- split amount/size user configurable
+- split across multiple services
+- User chosen encryption - to an extent?
+- validation of successful upload returned to client
 """
-import base64
 import configparser
 import os
 import uuid
@@ -87,9 +93,6 @@ def derive_key(salt, password="exampleKey", iterations=100000, dk_len=16):
     password_bytes = password.encode('utf-8')
     derived_key = PBKDF2(password_bytes, salt, dkLen=dk_len,
                          count=iterations, hmac_hash_module=SHA256)
-    # Convert to base64 and log
-    base64_key = base64.b64encode(derived_key).decode('utf-8')
-    print("Derived Key (Base64):", base64_key)
     return derived_key
 
 
@@ -224,10 +227,12 @@ def index():
     Returns:
         str: The rendered HTML for the index page.
     """
+    upload_url = url_for('upload_file')
     return render_template('index.html',
                            server_hostname=server_hostname,
                            file_guid=RUN_GUID,
-                           number_of_files=NUMBEROFFILES)
+                           number_of_files=NUMBEROFFILES,
+                           upload_url=upload_url)
 
 
 @app.route('/upload', methods=['GET', 'POST'])
@@ -310,4 +315,4 @@ def complete_upload():
 if __name__ == '__main__':
     print("GID Generated is: " + RUN_GUID)
     print_routes(app)  # This will print all routes
-    app.run(port=int(config['SERVER']['Port']), debug=config['SERVER'].getboolean('DebugMode'))
+    app.run(host='0.0.0.0', port=int(config['SERVER']['Port']), debug=config['SERVER'].getboolean('DebugMode'))

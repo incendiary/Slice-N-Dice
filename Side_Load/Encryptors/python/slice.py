@@ -98,23 +98,16 @@ file_size = os.path.getsize(enc_file_path)
 chunk_size = file_size // num_files
 remainder = file_size % num_files
 
-# Split file into chunks
-for i in range(num_files):
-    part_size = chunk_size + (1 if i < remainder else 0)
-    with open(enc_file_path, 'rb') as enc_file:
-        # Move to the start of the current chunk
-        enc_file.seek(i * chunk_size)
-        # Read the chunk
+# Split file into chunks — open once and read sequentially to avoid offset bugs
+with open(enc_file_path, 'rb') as enc_file:
+    for i in range(num_files):
+        part_size = chunk_size + (1 if i < remainder else 0)
         chunk_data = enc_file.read(part_size)
-        # Write the chunk to a new part file
-
-        part_file_path = os.path.join(parts_directory, f'{file_path}_part{i}')
+        part_file_path = os.path.join(parts_directory, f'{file_path}_part_{i}')
         with open(part_file_path, 'wb') as part_file:
             print(f"Saving {part_file_path}")
             part_file.write(chunk_data)
 
-
 print(f"Encrypted file split into {num_files} parts.")
 print("IV saved to iv.bin.")
-print(f"Key is {password}")
 print("salt saved to salt.bin.")

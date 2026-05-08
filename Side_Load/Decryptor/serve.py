@@ -9,7 +9,7 @@ import hashlib
 import base64
 import re
 from werkzeug.utils import secure_filename
-from flask import Flask, send_file, abort, render_template
+from flask import Flask, send_file, abort, render_template, Response
 
 app = Flask(__name__)
 
@@ -74,7 +74,7 @@ def index():
     file_parts = {part: compute_hash(os.path.join(
         DOWNLOADS_PATH, part)) for part in os.listdir(DOWNLOADS_PATH)}
     sorted_file_parts = dict(sorted(file_parts.items(),
-                                    key=lambda item: int(re.search(r'part(\d+)',
+                                    key=lambda item: int(re.search(r'part_(\d+)',
                                                                    item[0]).group(1)
                                                          )
                                     )
@@ -109,10 +109,9 @@ def serve_file_part(uid, filename):
 
     print(file_path)
 
-    # Check if file exists
     if os.path.isfile(file_path):
         return send_file(file_path, mimetype='application/octet-stream')
-    return None
+    abort(404)
 
 
 # Serve the IV and Salt files, with added directory traversal protection
