@@ -122,3 +122,40 @@ def test_decrypt_file_part_roundtrip(tmp_path):
 
     result = serve.decrypt_file_part(str(enc_file), key, iv)
     assert result == plaintext
+
+
+# ---------------------------------------------------------------------------
+# Authentication — _require_token
+# ---------------------------------------------------------------------------
+
+VALID_TOKEN = "test-token"  # matches ApiToken in tests/conftest.py test config
+
+
+def test_upload_key_rejects_missing_token():
+    with serve.app.test_client() as client:
+        r = client.post("/upload/key", data=b"secret")
+        assert r.status_code == 401
+
+
+def test_upload_key_rejects_wrong_token():
+    with serve.app.test_client() as client:
+        r = client.post("/upload/key", data=b"secret", headers={"X-Api-Token": "wrong"})
+        assert r.status_code == 401
+
+
+def test_upload_key_accepts_valid_token():
+    with serve.app.test_client() as client:
+        r = client.post("/upload/key", data=b"secret", headers={"X-Api-Token": VALID_TOKEN})
+        assert r.status_code == 200
+
+
+def test_upload_complete_rejects_missing_token():
+    with serve.app.test_client() as client:
+        r = client.get("/upload/complete?filename=test")
+        assert r.status_code == 401
+
+
+def test_upload_post_rejects_missing_token():
+    with serve.app.test_client() as client:
+        r = client.post("/upload")
+        assert r.status_code == 401

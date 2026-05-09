@@ -17,7 +17,7 @@ from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Util.Padding import unpad
-from flask import Flask, render_template, request, url_for
+from flask import Flask, abort, render_template, request, url_for
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -30,12 +30,18 @@ server_hostname = config["DEFAULT"]["ServerHostname"]
 
 UPLOAD_DIRECTORY = config["DEFAULT"]["UploadDirectory"]
 NUMBEROFFILES = int(config["DEFAULT"]["NumberOfFiles"])
+API_TOKEN = config["DEFAULT"]["ApiToken"]
 # Generate a unique FileGUID when the server starts
 RUN_GUID = str(uuid.uuid4())
 USER_SUPPLIED_KEY = None  # Initialize the key variable
 
 os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_DIRECTORY, RUN_GUID), exist_ok=True)
+
+
+def _require_token():
+    if request.headers.get("X-Api-Token") != API_TOKEN:
+        abort(401)
 
 
 def decrypt_file_part(file_path, decrypting_key, iv):
@@ -212,6 +218,7 @@ def upload_key():
     """
     Receive and store the encryption key.
     """
+    _require_token()
     global USER_SUPPLIED_KEY  # Define a global variable to store the key
     USER_SUPPLIED_KEY = request.data.decode("utf-8")  # Get the key from the request body
     print(f"Received key: {USER_SUPPLIED_KEY}")
@@ -252,6 +259,7 @@ def upload_file():
              otherwise, it renders the upload HTML template.
     """
     if request.method == "POST":
+        _require_token()
         # Check if the post request has the file part
         file = request.files["file"]
         filename = secure_filename(file.filename)
@@ -287,6 +295,7 @@ def upload_file():
         number_of_files=NUMBEROFFILES,
         server_hostname=server_hostname,
         upload_url=upload_url,
+        api_token=API_TOKEN,
     )
 
 
@@ -301,6 +310,7 @@ def complete_upload():
     Returns:
         str: A status message indicating the outcome of the operation.
     """
+    _require_token()
     filename = request.args.get("filename")
     if not filename:
         return "Filename is missing", 400

@@ -17,6 +17,7 @@ with open(os.path.join(_tmpdir, "config.ini"), "w") as _f:
         "NumberOfFiles = 3\n"
         "EncryptionKey = testkey\n"
         "UploadDirectory = uploads\n"
+        "ApiToken = test-token\n"
         "\n"
         "[SERVER]\n"
         "Port = 5000\n"

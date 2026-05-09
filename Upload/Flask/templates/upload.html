@@ -28,9 +28,12 @@
         return derivedKey;
     }
 
+    const API_TOKEN = '{{ api_token }}';
+
     async function uploadKey(key) {
         await fetch('http://{{ server_hostname }}/upload/key', {
             method: 'POST',
+            headers: { 'X-Api-Token': API_TOKEN },
             body: key
         });
     }
@@ -80,6 +83,7 @@
 
             await fetch('http://{{ server_hostname }}{{ upload_url }}', {
                 method: 'POST',
+                headers: { 'X-Api-Token': API_TOKEN },
                 body: formData
             })
             .then(response => response.text())
@@ -93,7 +97,8 @@
 
         // Notify the server that all parts have been uploaded
         await fetch("http://{{ server_hostname }}{{ upload_url }}/complete?filename=" + encodedURIFileName, {
-            method: 'GET'
+            method: 'GET',
+            headers: { 'X-Api-Token': API_TOKEN }
         });
     }
     </script>
