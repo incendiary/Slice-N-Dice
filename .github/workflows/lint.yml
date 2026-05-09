@@ -1,0 +1,32 @@
+name: Lint
+
+on: [push, pull_request]
+
+jobs:
+  python-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install linters
+        run: pip install black isort flake8
+      - name: black
+        run: black --check .
+      - name: isort
+        run: isort --check-only .
+      - name: flake8
+        run: flake8 .
+
+  dotnet-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "7.0.x"
+      - name: Restore packages
+        run: dotnet restore Side_Load/Encryptors/cs/Dice.cs/Dice.cs.sln
+      - name: dotnet format
+        run: dotnet format --verify-no-changes Side_Load/Encryptors/cs/Dice.cs/Dice.cs.sln

@@ -133,6 +133,7 @@ DebugMode = Off
 ### v1.3.0 — Code Standards & Tooling
 - [ ] Enforce Python style: Black + isort + flake8 + pre-commit hooks
 - [ ] Enforce C# style: `dotnet format` + StyleCop.Analyzers + EditorConfig + pre-commit hooks
+- [ ] AI-assisted code review and refactoring pass using [andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills) guidelines — surgical changes, simplicity-first, no speculative abstractions
 
 ### Future
 - [ ] Split uploads across multiple independent services
