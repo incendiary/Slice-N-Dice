@@ -133,7 +133,7 @@ DebugMode = Off
 |---|--------|-------------|
 | [#9](https://github.com/incendiary/Slice-N-Dice/issues/9) | 🔄 In progress | Remove dead `recombine_file()` from Upload/Flask/serve.py |
 | [#10](https://github.com/incendiary/Slice-N-Dice/issues/10) | 🔄 In progress | Remove misleading default password in `derive_key()` |
-| [#11](https://github.com/incendiary/Slice-N-Dice/issues/11) | 🔄 In progress | Document `USER_SUPPLIED_KEY` thread caveat; add slice.py testability roadmap note |
+| [#11](https://github.com/incendiary/Slice-N-Dice/issues/11) | 🔄 In progress | Document `USER_SUPPLIED_KEY` single-session design constraint |
 | [#12](https://github.com/incendiary/Slice-N-Dice/issues/12) | 🔄 In progress | Remove what-comments and redundant docstring noise from Python source |
 | — | 🔮 Future | Refactor `slice.py` into importable functions to enable unit testing |
 | — | 🔮 Future | Fix IV reuse across file parts in upload mode |

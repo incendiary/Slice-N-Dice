@@ -31,9 +31,16 @@ server_hostname = config["DEFAULT"]["ServerHostname"]
 UPLOAD_DIRECTORY = config["DEFAULT"]["UploadDirectory"]
 NUMBEROFFILES = int(config["DEFAULT"]["NumberOfFiles"])
 API_TOKEN = config["DEFAULT"]["ApiToken"]
-# Generate a unique FileGUID when the server starts
+# RUN_GUID scopes all uploads to a single operator session. A new GUID is
+# generated each time the server starts, so restarting between engagements
+# prevents cross-session file collisions without any manual cleanup.
 RUN_GUID = str(uuid.uuid4())
-USER_SUPPLIED_KEY = None  # Initialize the key variable
+
+# USER_SUPPLIED_KEY is intentionally a module-level global. The upload flow
+# is single-session by design: one operator starts the server, one target
+# uploads, the server decrypts and stops. Concurrent uploads from different
+# keys are not a supported use case, so no locking is needed.
+USER_SUPPLIED_KEY = None
 
 os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 os.makedirs(os.path.join(UPLOAD_DIRECTORY, RUN_GUID), exist_ok=True)
