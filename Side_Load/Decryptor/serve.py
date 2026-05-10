@@ -30,15 +30,7 @@ encoded_key = base64.b64encode(key.encode("utf-8")).decode("utf-8")
 
 
 def compute_hash(file_path):
-    """
-    Compute the SHA-256 hash of a file.
-
-    Args:
-        file_path (str): The path to the file.
-
-    Returns:
-        str: The computed SHA-256 hash.
-    """
+    """Return the hex-encoded SHA-256 hash of a file, read in 4 KiB chunks."""
     hash_sha256 = hashlib.sha256()
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -48,15 +40,7 @@ def compute_hash(file_path):
 
 @app.after_request
 def add_header(response):
-    """
-    Add headers to the response to control caching.
-
-    Args:
-        response: The Flask response object.
-
-    Returns:
-        response: The modified Flask response object.
-    """
+    """Disable all caching so browsers always re-fetch encrypted parts."""
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
@@ -153,14 +137,8 @@ def get_salt(uid):
     return send_file(salt_path, mimetype="application/octet-stream")
 
 
-# Print all the routes for the Flask flask_app
 def print_routes(flask_app):
-    """
-    Print all registered routes in the Flask flask_app.
-
-    Args:
-        flask_app: The Flask flask_app.
-    """
+    """Print all registered URL rules — used at startup for operator visibility."""
     print("Registered routes:")
     for rule in flask_app.url_map.iter_rules():
         print(f"{rule.endpoint}: {rule}")
@@ -169,5 +147,5 @@ def print_routes(flask_app):
 if __name__ == "__main__":
     print("GID Generated is: " + FILE_GUID)
     print(f"Key Info - Value: {key}, Encoded Value:{encoded_key}")
-    print_routes(app)  # This will print all routes
+    print_routes(app)
     app.run(port=int(config["SERVER"]["Port"]), debug=config["SERVER"].getboolean("DebugMode"))

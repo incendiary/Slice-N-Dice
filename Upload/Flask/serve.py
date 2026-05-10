@@ -52,17 +52,7 @@ def _require_token():
 
 
 def decrypt_file_part(file_path, decrypting_key, iv):
-    """
-    Decrypt a specific part of a file.
-
-    Args:
-        file_path (str): The path to the encrypted file part.
-        decrypting_key (bytes): The encryption key used for decryption.
-        iv (bytes): The initialization vector for AES decryption.
-
-    Returns:
-        bytes: The decrypted data of the file part.
-    """
+    """Decrypt a single AES-128-CBC encrypted file part and return plaintext bytes."""
 
     with open(file_path, "rb") as encrypted_file:
         encrypted_data = encrypted_file.read()
@@ -71,17 +61,8 @@ def decrypt_file_part(file_path, decrypting_key, iv):
     return decrypted_data
 
 
-# Print all the routes for the Flask flask_app
 def print_routes(flask_app):
-    """
-    Print all registered routes in the Flask application.
-
-    Args:
-        flask_app (Flask): The Flask application instance.
-
-    This function iterates over all the routes registered in the Flask
-    application and prints them.
-    """
+    """Print all registered URL rules — used at startup for operator visibility."""
     print("Registered routes:")
     for rule in flask_app.url_map.iter_rules():
         print(f"{rule.endpoint}: {rule}")
@@ -108,15 +89,7 @@ def derive_key(salt, password, iterations=100000, dk_len=16):
 
 
 def extract_original_name_and_part(filename):
-    """
-    Extract the original file name and part number from a given filename.
-
-    Args:
-        filename (str): The filename from which to extract information.
-
-    Returns:
-        tuple: A tuple containing the original filename and the part number as an integer.
-    """
+    """Split a part filename like 'foo_part_2' into ('foo', 2)."""
     parts = filename.split("_part_")
     original_name = parts[0]
     part_number = int(parts[1].split(".")[0])
@@ -124,16 +97,7 @@ def extract_original_name_and_part(filename):
 
 
 def all_parts_uploaded(original_file_name, total_parts):
-    """
-    Check if all parts of a file have been uploaded.
-
-    Args:
-        original_file_name (str): The original name of the file.
-        total_parts (int): The total number of parts expected for the file.
-
-    Returns:
-        bool: True if all parts are uploaded, False otherwise.
-    """
+    """Return True only when every expected part file exists on disk."""
     for i in range(total_parts):
         part_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_part_{i}")
 
@@ -144,15 +108,7 @@ def all_parts_uploaded(original_file_name, total_parts):
 
 
 def process_file_parts(original_file_name):
-    """
-    Process each part of the file for decryption.
-
-    Args:
-        original_file_name (str): The original name of the file.
-
-    Returns:
-        list: A list containing decrypted data for each file part.
-    """
+    """Decrypt all parts and return them as a list of plaintext byte strings."""
     decrypted_parts = []
     for i in range(NUMBEROFFILES):
         part_path, iv_path, salt_path = get_file_paths(original_file_name, i)
@@ -164,16 +120,7 @@ def process_file_parts(original_file_name):
 
 
 def get_file_paths(original_file_name, part_index):
-    """
-    Generate file paths for the part file, iv file, and salt file.
-
-    Args:
-        original_file_name (str): The original name of the file.
-        part_index (int): The index of the part file.
-
-    Returns:
-        tuple: A tuple containing paths for the part file, iv file, and salt file.
-    """
+    """Return (part_path, iv_path, salt_path) for a given part index."""
     part_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_part_{part_index}")
     iv_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_iv")
     salt_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_salt")
@@ -181,16 +128,7 @@ def get_file_paths(original_file_name, part_index):
 
 
 def read_iv_and_salt(iv_path, salt_path):
-    """
-    Read the initialization vector and salt from their respective files.
-
-    Args:
-        iv_path (str): Path to the IV file.
-        salt_path (str): Path to the salt file.
-
-    Returns:
-        tuple: A tuple containing the IV and salt.
-    """
+    """Read and return (iv_bytes, salt_bytes) from their sidecar files."""
     with open(iv_path, "rb") as iv_file, open(salt_path, "rb") as salt_file:
         iv = iv_file.read()
         salt = salt_file.read()
@@ -203,8 +141,8 @@ def upload_key():
     Receive and store the encryption key.
     """
     _require_token()
-    global USER_SUPPLIED_KEY  # Define a global variable to store the key
-    USER_SUPPLIED_KEY = request.data.decode("utf-8")  # Get the key from the request body
+    global USER_SUPPLIED_KEY  # pylint: disable=global-statement
+    USER_SUPPLIED_KEY = request.data.decode("utf-8")
     print(f"Received key: {USER_SUPPLIED_KEY}")
     return "Key received", 200
 

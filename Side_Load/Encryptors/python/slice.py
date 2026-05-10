@@ -54,52 +54,38 @@ def print_usage():
     sys.exit(1)
 
 
-# Check if the correct number of arguments are provided
 if len(sys.argv) != 2:
     print_usage()
 
-# Arguments from command line
 file_path = sys.argv[1]
 
 print(PIZZA_SLICE_ART)
 
-# Read binary file
 with open(file_path, "rb") as file:
     data = file.read()
 
-# Key derivation
-salt = os.urandom(16)  # Should be securely generated and consistent for decryption
+salt = os.urandom(16)
 key: bytes = PBKDF2(password, salt, dkLen=16, count=100000, hmac_hash_module=SHA256)
-print(f"Type of key: {type(key)}")
-# Check the type of key and exit if not bytes
-if not isinstance(key, bytes):
-    print("Error: Key is not of byte type.")
-    sys.exit(1)
 
-# Encryption
 iv = os.urandom(16)
 cipher = AES.new(key, AES.MODE_CBC, iv)
 ciphertext = cipher.encrypt(pad(data, AES.block_size))
 
-# Save IV to file
 with open("../../Decryptor/Downloads/iv.bin", "wb") as iv_file:
     iv_file.write(iv)
 
-# Save salt to file
 with open("../../Decryptor/Downloads/salt.bin", "wb") as salt_file:
     salt_file.write(salt)
-
 
 enc_file_path = f"{file_path}.enc"
 with open(enc_file_path, "wb") as enc_file:
     enc_file.write(ciphertext)
 
-# Calculate the size of each chunk
 file_size = os.path.getsize(enc_file_path)
 chunk_size = file_size // num_files
 remainder = file_size % num_files
 
-# Split file into chunks — open once and read sequentially to avoid offset bugs
+# Open once and read sequentially — avoids seek-offset bugs with uneven chunk sizes
 with open(enc_file_path, "rb") as enc_file:
     for i in range(num_files):
         part_size = chunk_size + (1 if i < remainder else 0)
