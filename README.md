@@ -110,36 +110,44 @@ DebugMode = Off
 
 ## Version History
 
-### v1.0.0 (current)
+### v1.0.1
+- Bumped all Python deps to current stable (Flask 3.1.3, Werkzeug 3.1.8, pycryptodome 3.23.0)
+- Updated pre-commit hooks to latest (gitleaks v8.30.1, black 26.3.1, isort 8.0.1, flake8 7.3.0)
+- Fixed all pre-existing CI failures (pylint, dotnet-format, line-ending mismatch)
+- Sanitised engagement-specific IP address from config before public release
+
+### v1.0.0
 - Python AES-CBC encryptor with PBKDF2 key derivation
 - Flask side-load server (serve encrypted parts to browser)
 - Flask upload receiver (browser-side encrypt + multi-part upload)
 - Browser-based decryption via Web Crypto API
-- C# encryptor stub (Dice.cs)
+- C# encryptor (Dice.cs) — matches Python encryptor parameters exactly
+- API token authentication on all upload receiver endpoints
+- 18-test pytest suite covering crypto, upload logic, and auth
 
 ---
 
 ## Roadmap
 
-### v1.1.0 — Quality & Correctness
-- [ ] Add test suite (unit + integration) for encrypt/decrypt round-trips
-- [ ] Fix IV reuse across file parts in upload mode
-- [ ] Complete C# encryptor (Dice.cs)
+| # | Status | Description |
+|---|--------|-------------|
+| [#9](https://github.com/incendiary/Slice-N-Dice/issues/9) | 🔄 In progress | Remove dead `recombine_file()` from Upload/Flask/serve.py |
+| [#10](https://github.com/incendiary/Slice-N-Dice/issues/10) | 🔄 In progress | Remove misleading default password in `derive_key()` |
+| [#11](https://github.com/incendiary/Slice-N-Dice/issues/11) | 🔄 In progress | Document `USER_SUPPLIED_KEY` single-session design constraint |
+| [#12](https://github.com/incendiary/Slice-N-Dice/issues/12) | 🔄 In progress | Remove what-comments and redundant docstring noise from Python source files |
+| — | 🔮 Future | Refactor `slice.py` into importable functions to enable unit testing |
+| — | 🔮 Future | Fix IV reuse across file parts in upload mode |
+| — | 🔮 Future | Replace plaintext key transmission with a proper key-exchange mechanism |
+| — | 🔮 Future | Split uploads across multiple independent services |
+| — | 🔮 Future | User-selectable encryption algorithm |
+| — | 🔮 Future | Upload success/failure feedback to client |
+| — | 🔮 Future | Configurable split count and chunk size via CLI |
 
-### v1.2.0 — Security Hardening
-- [ ] Add authentication to upload receiver endpoints
-- [ ] Replace plaintext key transmission with a proper key-exchange mechanism
+---
 
-### v1.3.0 — Code Standards & Tooling
-- [ ] Enforce Python style: Black + isort + flake8 + pre-commit hooks
-- [ ] Enforce C# style: `dotnet format` + StyleCop.Analyzers + EditorConfig + pre-commit hooks
-- [ ] AI-assisted code review and refactoring pass using [andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills) guidelines — surgical changes, simplicity-first, no speculative abstractions
+## A Note on AI-Assisted Uplift
 
-### Future
-- [ ] Split uploads across multiple independent services
-- [ ] User-selectable encryption algorithm
-- [ ] Upload success/failure feedback to client
-- [ ] Configurable split count and chunk size via CLI
+This project was prepared for public release with the assistance of [Claude Code](https://claude.com/claude-code), following [karpathy-style](https://github.com/forrestchang/andrej-karpathy-skills) engineering guidelines (surgical changes, simplicity-first, no speculative abstractions). Things should work, but in some cases I haven't been able to verify every path end-to-end. PRs and fixes are very welcome.
 
 ---
 
