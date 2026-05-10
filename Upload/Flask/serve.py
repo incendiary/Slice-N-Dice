@@ -80,22 +80,18 @@ def print_routes(flask_app):
         print(f"{rule.endpoint}: {rule}")
 
 
-def derive_key(salt, password="exampleKey", iterations=100000, dk_len=16):
+def derive_key(salt, password, iterations=100000, dk_len=16):
     """
-    Derive a cryptographic derived_key using PBKDF2
-    (Password-Based Key Derivation Function 2).
+    Derive a cryptographic key using PBKDF2-SHA256.
 
     Args:
-        salt (bytes): The salt value to use in derived_key derivation.
-        password (str, optional): The password to derive the derived_key from.
-            Defaults to "exampleKey".
-        iterations (int, optional): Number of iterations for derived_key derivation.
-            Defaults to 100000.
-        dk_len (int, optional): The desired byte-length of the derived derived_key.
-            Defaults to 16.
+        salt (bytes): Random salt; must be the same value used during encryption.
+        password (str): User-supplied passphrase.
+        iterations (int): PBKDF2 iteration count. Defaults to 100000.
+        dk_len (int): Output key length in bytes. Defaults to 16 (AES-128).
 
     Returns:
-        bytes: The derived cryptographic derived_key.
+        bytes: The derived key.
     """
     password_bytes = password.encode("utf-8")
     derived_key = PBKDF2(
