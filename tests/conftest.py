@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.join(_REPO_ROOT, "Upload", "Flask"))
 # serve.py's module-level config reads and os.makedirs calls succeed.
 _tmpdir = tempfile.mkdtemp(prefix="slice_n_dice_tests_")
 
-with open(os.path.join(_tmpdir, "config.ini"), "w") as _f:
+with open(os.path.join(_tmpdir, "config.ini"), "w", encoding="utf-8") as _f:
     _f.write(
         "[DEFAULT]\n"
         "ServerHostname = localhost\n"

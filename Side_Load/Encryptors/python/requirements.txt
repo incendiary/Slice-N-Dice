@@ -1,2 +1,1 @@
-pycryptodome==3.14.1
-ConfigParser
+pycryptodome==3.23.0
