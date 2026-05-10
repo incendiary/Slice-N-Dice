@@ -141,6 +141,7 @@ DebugMode = Off
 | [#10](https://github.com/incendiary/Slice-N-Dice/issues/10) | ✅ Done (v1.0.2) | Remove misleading default password in `derive_key()` |
 | [#11](https://github.com/incendiary/Slice-N-Dice/issues/11) | ✅ Done (v1.0.2) | Document `USER_SUPPLIED_KEY` single-session design constraint |
 | [#12](https://github.com/incendiary/Slice-N-Dice/issues/12) | ✅ Done (v1.0.2) | Remove what-comments and redundant docstring noise from Python source files |
+| [#14](https://github.com/incendiary/Slice-N-Dice/issues/14) | 🔮 Future | Add unit tests for Side_Load/Decryptor/serve.py (zero coverage currently) |
 | — | 🔮 Future | Refactor `slice.py` into importable functions to enable unit testing |
 | — | 🔮 Future | Fix IV reuse across file parts in upload mode |
 | — | 🔮 Future | Replace plaintext key transmission with a proper key-exchange mechanism |
