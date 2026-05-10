@@ -140,25 +140,6 @@ def all_parts_uploaded(original_file_name, total_parts):
     return True
 
 
-def recombine_file(original_file_name, total_parts):
-    """
-    Combine all uploaded parts of a file into a single file.
-
-    Args:
-        original_file_name (str): The original name of the file.
-        total_parts (int): The total number of parts to combine.
-
-    This function reads each part of the file and writes it to a combined file.
-    """
-    with open(os.path.join(UPLOAD_DIRECTORY, RUN_GUID, original_file_name), "wb") as output_file:
-        for i in range(total_parts):
-            part_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_part_{i}")
-            with open(part_path, "rb") as part_file:
-                output_file.write(part_file.read())
-            # Optionally, delete the part file after combining
-            # os.remove(part_path)
-
-
 def process_file_parts(original_file_name):
     """
     Process each part of the file for decryption.
