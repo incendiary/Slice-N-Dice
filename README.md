@@ -110,6 +110,12 @@ DebugMode = Off
 
 ## Version History
 
+### v1.0.3
+- Added `[project]` metadata to `pyproject.toml` (name, version, description, `requires-python`)
+- Added `[tool.coverage.run/report]` config to `pyproject.toml`
+- Aligned black `target-version` to supported Python matrix (3.9–3.11)
+- Opened issue [#14](https://github.com/incendiary/Slice-N-Dice/issues/14) for missing Side_Load/Decryptor test coverage
+
 ### v1.0.2
 - Removed dead `recombine_file()` function (never called)
 - Made `derive_key()` password argument required (removes silent-weak-key footgun)
