@@ -111,9 +111,9 @@ def serve_file_part(uid, filename):
 
     print(file_path)
 
-    if os.path.isfile(file_path):
-        return send_file(file_path, mimetype="application/octet-stream")
-    abort(404)
+    if not os.path.isfile(file_path):
+        abort(404)
+    return send_file(file_path, mimetype="application/octet-stream")
 
 
 # Serve the IV and Salt files, with added directory traversal protection
