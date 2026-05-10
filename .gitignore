@@ -1,0 +1,32 @@
+Upload/Flask/uploads/*
+Side_Load/Decryptor/Downloads/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+.vs/
+*.iml
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+dist/
+build/
+
+# C# build artifacts
+bin/
+obj/
+
+# Test / sample payloads
+randomfile
+randomfile.enc
+
+# Config files may contain secrets — use config.ini.example instead
+# config.ini

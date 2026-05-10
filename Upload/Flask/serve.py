@@ -1,0 +1,260 @@
+"""
+This module contains a Flask application for receiving Split and Encrypted files.
+
+TODO:
+
+- split amount/size user configurable
+- split across multiple services
+- User chosen encryption - to an extent?
+- validation of successful upload returned to client
+"""
+
+import configparser
+import os
+import uuid
+
+from Crypto.Cipher import AES
+from Crypto.Hash import SHA256
+from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Util.Padding import unpad
+from flask import Flask, abort, render_template, request, url_for
+from werkzeug.utils import secure_filename
+
+app = Flask(__name__)
+app.secret_key = str(uuid.uuid4())
+
+# Read the configuration
+config = configparser.ConfigParser()
+config.read("config.ini")
+server_hostname = config["DEFAULT"]["ServerHostname"]
+
+UPLOAD_DIRECTORY = config["DEFAULT"]["UploadDirectory"]
+NUMBEROFFILES = int(config["DEFAULT"]["NumberOfFiles"])
+API_TOKEN = config["DEFAULT"]["ApiToken"]
+# RUN_GUID scopes all uploads to a single operator session. A new GUID is
+# generated each time the server starts, so restarting between engagements
+# prevents cross-session file collisions without any manual cleanup.
+RUN_GUID = str(uuid.uuid4())
+
+# USER_SUPPLIED_KEY is intentionally a module-level global. The upload flow
+# is single-session by design: one operator starts the server, one target
+# uploads, the server decrypts and stops. Concurrent uploads from different
+# keys are not a supported use case, so no locking is needed.
+USER_SUPPLIED_KEY = None
+
+os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
+os.makedirs(os.path.join(UPLOAD_DIRECTORY, RUN_GUID), exist_ok=True)
+
+
+def _require_token():
+    if request.headers.get("X-Api-Token") != API_TOKEN:
+        abort(401)
+
+
+def decrypt_file_part(file_path, decrypting_key, iv):
+    """Decrypt a single AES-128-CBC encrypted file part and return plaintext bytes."""
+
+    with open(file_path, "rb") as encrypted_file:
+        encrypted_data = encrypted_file.read()
+        cipher = AES.new(decrypting_key, AES.MODE_CBC, iv)
+        decrypted_data = unpad(cipher.decrypt(encrypted_data), AES.block_size)
+    return decrypted_data
+
+
+def print_routes(flask_app):
+    """Print all registered URL rules — used at startup for operator visibility."""
+    print("Registered routes:")
+    for rule in flask_app.url_map.iter_rules():
+        print(f"{rule.endpoint}: {rule}")
+
+
+def derive_key(salt, password, iterations=100000, dk_len=16):
+    """
+    Derive a cryptographic key using PBKDF2-SHA256.
+
+    Args:
+        salt (bytes): Random salt; must be the same value used during encryption.
+        password (str): User-supplied passphrase.
+        iterations (int): PBKDF2 iteration count. Defaults to 100000.
+        dk_len (int): Output key length in bytes. Defaults to 16 (AES-128).
+
+    Returns:
+        bytes: The derived key.
+    """
+    password_bytes = password.encode("utf-8")
+    derived_key = PBKDF2(
+        password_bytes, salt, dkLen=dk_len, count=iterations, hmac_hash_module=SHA256
+    )
+    return derived_key
+
+
+def extract_original_name_and_part(filename):
+    """Split a part filename like 'foo_part_2' into ('foo', 2)."""
+    parts = filename.split("_part_")
+    original_name = parts[0]
+    part_number = int(parts[1].split(".")[0])
+    return original_name, part_number
+
+
+def all_parts_uploaded(original_file_name, total_parts):
+    """Return True only when every expected part file exists on disk."""
+    for i in range(total_parts):
+        part_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_part_{i}")
+
+        print(f"looking for {part_path}")
+        if not os.path.exists(part_path):
+            return False
+    return True
+
+
+def process_file_parts(original_file_name):
+    """Decrypt all parts and return them as a list of plaintext byte strings."""
+    decrypted_parts = []
+    for i in range(NUMBEROFFILES):
+        part_path, iv_path, salt_path = get_file_paths(original_file_name, i)
+        iv, salt = read_iv_and_salt(iv_path, salt_path)
+        derived_key = derive_key(salt, USER_SUPPLIED_KEY)
+        decrypted_data = decrypt_file_part(part_path, derived_key, iv)
+        decrypted_parts.append(decrypted_data)
+    return decrypted_parts
+
+
+def get_file_paths(original_file_name, part_index):
+    """Return (part_path, iv_path, salt_path) for a given part index."""
+    part_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_part_{part_index}")
+    iv_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_iv")
+    salt_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"{original_file_name}_salt")
+    return part_path, iv_path, salt_path
+
+
+def read_iv_and_salt(iv_path, salt_path):
+    """Read and return (iv_bytes, salt_bytes) from their sidecar files."""
+    with open(iv_path, "rb") as iv_file, open(salt_path, "rb") as salt_file:
+        iv = iv_file.read()
+        salt = salt_file.read()
+    return iv, salt
+
+
+@app.route("/upload/key", methods=["POST"])
+def upload_key():
+    """
+    Receive and store the encryption key.
+    """
+    _require_token()
+    global USER_SUPPLIED_KEY  # pylint: disable=global-statement
+    USER_SUPPLIED_KEY = request.data.decode("utf-8")
+    print(f"Received key: {USER_SUPPLIED_KEY}")
+    return "Key received", 200
+
+
+@app.route("/")
+def index():
+    """
+    Render the index page of the application.
+
+    This route renders the main page of the application, displaying file
+    information and upload instructions.
+
+    Returns:
+        str: The rendered HTML for the index page.
+    """
+    upload_url = url_for("upload_file")
+    return render_template(
+        "index.html",
+        server_hostname=server_hostname,
+        file_guid=RUN_GUID,
+        number_of_files=NUMBEROFFILES,
+        upload_url=upload_url,
+    )
+
+
+@app.route("/upload", methods=["GET", "POST"])
+def upload_file():
+    """
+    Handle the file upload via the '/upload' route.
+
+    Supports both GET and POST requests. For GET requests, it renders the
+    upload page. For POST requests, it handles the uploading of file parts.
+
+    Returns:
+        str: A success message if a file part is uploaded successfully,
+             otherwise, it renders the upload HTML template.
+    """
+    if request.method == "POST":
+        _require_token()
+        # Check if the post request has the file part
+        file = request.files["file"]
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, filename)
+        file.save(file_path)
+
+        if "_part_0" in filename:
+            print(f"Here: filename is {filename}")
+
+            iv = request.files["iv"]
+            salt = request.files["salt"]
+
+            base_filename = filename[:-7]
+
+            iv_filename = secure_filename(base_filename + "_iv")
+            salt_filename = secure_filename(base_filename + "_salt")
+
+            iv_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, iv_filename)
+            salt_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, salt_filename)
+
+            iv.save(iv_path)
+            salt.save(salt_path)
+
+        print(f"Uploaded: {filename}")
+        original_file_name, part_number = extract_original_name_and_part(filename)
+        print(f"Original Filename: {original_file_name}, Part Number: {part_number}")
+
+        return "File part uploaded successfully", 200
+
+    upload_url = url_for("upload_file")
+    return render_template(
+        "upload.html",
+        number_of_files=NUMBEROFFILES,
+        server_hostname=server_hostname,
+        upload_url=upload_url,
+        api_token=API_TOKEN,
+    )
+
+
+@app.route("/upload/complete")
+def complete_upload():
+    """
+    Handle the completion of file upload via the '/upload/complete' route.
+
+    Checks if all parts of a file have been uploaded and, if so,
+    initiates the recombination and decryption process.
+
+    Returns:
+        str: A status message indicating the outcome of the operation.
+    """
+    _require_token()
+    filename = request.args.get("filename")
+    if not filename:
+        return "Filename is missing", 400
+
+    original_file_name, _ = extract_original_name_and_part(filename + "_part_0")
+    if not all_parts_uploaded(original_file_name, NUMBEROFFILES):
+        return "Not all parts are uploaded yet", 400
+
+    decrypted_parts = process_file_parts(original_file_name)
+    output_file_path = os.path.join(UPLOAD_DIRECTORY, RUN_GUID, f"decrypted_{original_file_name}")
+    with open(output_file_path, "wb") as output_file:
+        for part_data in decrypted_parts:
+            output_file.write(part_data)
+
+    return "File recombination complete", 200
+
+
+if __name__ == "__main__":
+    print("GID Generated is: " + RUN_GUID)
+    print_routes(app)  # This will print all routes
+    app.run(
+        host="0.0.0.0",
+        port=int(config["SERVER"]["Port"]),
+        debug=config["SERVER"].getboolean("DebugMode"),
+    )

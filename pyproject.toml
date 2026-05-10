@@ -1,0 +1,25 @@
+[project]
+name = "slice-n-dice"
+version = "1.0.2"
+description = "AES-CBC file split-and-deliver toolkit for authorised red team operations"
+requires-python = ">=3.9"
+readme = "README.md"
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["Upload/Flask", "Side_Load/Decryptor", "Side_Load/Encryptors/python"]
+omit = ["*/venv/*", "*/.venv/*", "*/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
