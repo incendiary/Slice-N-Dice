@@ -110,6 +110,12 @@ DebugMode = Off
 
 ## Version History
 
+### v1.0.2
+- Removed dead `recombine_file()` function (never called)
+- Made `derive_key()` password argument required (removes silent-weak-key footgun)
+- Documented `USER_SUPPLIED_KEY` single-session design constraint
+- Removed what-comments and redundant docstring noise from Python source
+
 ### v1.0.1
 - Bumped all Python deps to current stable (Flask 3.1.3, Werkzeug 3.1.8, pycryptodome 3.23.0)
 - Updated pre-commit hooks to latest (gitleaks v8.30.1, black 26.3.1, isort 8.0.1, flake8 7.3.0)
@@ -131,10 +137,10 @@ DebugMode = Off
 
 | # | Status | Description |
 |---|--------|-------------|
-| [#9](https://github.com/incendiary/Slice-N-Dice/issues/9) | 🔄 In progress | Remove dead `recombine_file()` from Upload/Flask/serve.py |
-| [#10](https://github.com/incendiary/Slice-N-Dice/issues/10) | 🔄 In progress | Remove misleading default password in `derive_key()` |
-| [#11](https://github.com/incendiary/Slice-N-Dice/issues/11) | 🔄 In progress | Document `USER_SUPPLIED_KEY` single-session design constraint |
-| [#12](https://github.com/incendiary/Slice-N-Dice/issues/12) | 🔄 In progress | Remove what-comments and redundant docstring noise from Python source files |
+| [#9](https://github.com/incendiary/Slice-N-Dice/issues/9) | ✅ Done (v1.0.2) | Remove dead `recombine_file()` from Upload/Flask/serve.py |
+| [#10](https://github.com/incendiary/Slice-N-Dice/issues/10) | ✅ Done (v1.0.2) | Remove misleading default password in `derive_key()` |
+| [#11](https://github.com/incendiary/Slice-N-Dice/issues/11) | ✅ Done (v1.0.2) | Document `USER_SUPPLIED_KEY` single-session design constraint |
+| [#12](https://github.com/incendiary/Slice-N-Dice/issues/12) | ✅ Done (v1.0.2) | Remove what-comments and redundant docstring noise from Python source files |
 | — | 🔮 Future | Refactor `slice.py` into importable functions to enable unit testing |
 | — | 🔮 Future | Fix IV reuse across file parts in upload mode |
 | — | 🔮 Future | Replace plaintext key transmission with a proper key-exchange mechanism |
