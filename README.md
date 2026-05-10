@@ -26,8 +26,8 @@ Two delivery modes:
 ├── Side_Load/
 │   ├── config.ini                    # Shared config (hostname, key, part count)
 │   ├── Encryptors/
-│   │   ├── python/slice.py           # Encrypt + split a file
-│   │   └── cs/Dice.cs/               # C# encryptor (WIP)
+│   │   ├── python/slice.py           # Encrypt + split a file (Python)
+│   │   └── cs/Dice.cs/               # Encrypt + split a file (C#, AES-128-CBC)
 │   └── Decryptor/
 │       ├── serve.py                  # Flask server — serves encrypted parts
 │       └── templates/SideLoadMe.html
@@ -44,9 +44,8 @@ Two delivery modes:
 
 ## Prerequisites
 
-- Python 3.x
-- `virtualenv` (recommended)
-- .NET 7+ SDK (for the C# encryptor)
+- Python 3.9+ (stdlib `venv` is sufficient — no `virtualenv` install needed)
+- .NET 9+ SDK (for the C# encryptor)
 
 ---
 
@@ -61,42 +60,58 @@ cd Slice-N-Dice
 
 ### Side Load — Encrypt and Serve
 
+**Step 1 — encrypt and split the file (Python encryptor)**
+
 ```bash
-# 1. Encrypt and split a file
 cd Side_Load/Encryptors/python
-virtualenv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python slice.py <file_to_encrypt>
+# Writes encrypted parts + iv.bin + salt.bin to Side_Load/Decryptor/Downloads/
+```
 
-# 2. Serve the encrypted parts
-cd ../../Decryptor
-virtualenv venv && source venv/bin/activate
+**Step 1 (alternative) — C# encryptor**
+
+```bash
+cd Side_Load/Encryptors/cs/Dice.cs
+dotnet run --project Dice.cs -- ../../config.ini <file_to_encrypt>
+```
+
+**Step 2 — serve the encrypted parts**
+
+```bash
+cd Side_Load/Decryptor
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python serve.py
 ```
 
-Browse to `http://<ServerHostname>` — the page will automatically fetch, verify, and decrypt the file in the browser.
+Browse to `http://<ServerHostname>` — the page fetches, verifies (SHA-256), and decrypts the file in the browser using the Web Crypto API.
 
 ### Upload — Browser Encrypt and Receive
 
 ```bash
 cd Upload/Flask
-virtualenv venv && source venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python serve.py
 ```
 
-Browse to `http://<ServerHostname>`, select a file, and enter an encryption key. The browser encrypts and splits the file before uploading.
+Browse to `http://<ServerHostname>`, select a file, and enter an encryption key. The browser encrypts and splits the file before uploading each part.
+
+> **Security:** Change `ApiToken` in `config.ini` to a random value before deploying. The default `change-me` placeholder will be rejected by any operator who reads this README.
 
 ### Configuration
 
-Edit `config.ini` in the relevant directory:
+Each mode has its own `config.ini`. Edit the one in the relevant directory before running:
+
+**Side Load** (`Side_Load/config.ini`):
 
 ```ini
 [DEFAULT]
-ServerHostname = 192.168.1.10
+ServerHostname = <your-server-ip>
 NumberOfFiles = 3
-EncryptionKey = your-strong-key-here
+EncryptionKey = <strong-passphrase>
 DownloadName = output.docx
 
 [SERVER]
@@ -104,7 +119,22 @@ Port = 80
 DebugMode = Off
 ```
 
-> **Never commit a `config.ini` with a real key.**
+**Upload** (`Upload/Flask/config.ini`):
+
+```ini
+[DEFAULT]
+ServerHostname = <your-server-ip>
+NumberOfFiles = 3
+EncryptionKey = <strong-passphrase>
+UploadDirectory = uploads
+ApiToken = <random-token>
+
+[SERVER]
+Port = 80
+DebugMode = Off
+```
+
+> **Never commit a `config.ini` containing real values.** The defaults are placeholders only.
 
 ---
 
@@ -143,6 +173,7 @@ DebugMode = Off
 
 | # | Status | Description |
 |---|--------|-------------|
+| [#16](https://github.com/incendiary/Slice-N-Dice/issues/16) | 🔄 In progress | README accuracy pass — prerequisites, setup, config, C# instructions |
 | [#9](https://github.com/incendiary/Slice-N-Dice/issues/9) | ✅ Done (v1.0.2) | Remove dead `recombine_file()` from Upload/Flask/serve.py |
 | [#10](https://github.com/incendiary/Slice-N-Dice/issues/10) | ✅ Done (v1.0.2) | Remove misleading default password in `derive_key()` |
 | [#11](https://github.com/incendiary/Slice-N-Dice/issues/11) | ✅ Done (v1.0.2) | Document `USER_SUPPLIED_KEY` single-session design constraint |
