@@ -5,6 +5,9 @@ description = "AES-CBC file split-and-deliver toolkit for authorised red team op
 requires-python = ">=3.9"
 readme = "README.md"
 
+[project.optional-dependencies]
+dev = ["detect-secrets"]
+
 [tool.black]
 line-length = 100
 target-version = ["py39", "py310", "py311"]
