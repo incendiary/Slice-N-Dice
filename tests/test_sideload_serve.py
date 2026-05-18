@@ -28,8 +28,9 @@ import os
 import shutil
 import sys
 
-import pytest
+import pytest  # pylint: disable=import-error
 
+# pylint: disable=redefined-outer-name
 
 # ---------------------------------------------------------------------------
 # Session-scoped setup: build disk layout and import the module once
