@@ -14,6 +14,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install pytest pytest-cov pycryptodome flask werkzeug configparser
+        run: pip install pytest pytest-cov pycryptodome flask werkzeug configparser detect-secrets
       - name: Run tests
         run: pytest tests/ -v --cov=. --cov-report=term-missing
