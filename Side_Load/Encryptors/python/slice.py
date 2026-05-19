@@ -2,27 +2,15 @@
 Contains functions related to slicing and encrypting the supplied file for delivery
 """
 
+import argparse
 import configparser
+import math
 import os
-import sys
 
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Util.Padding import pad
-
-# Read the configuration
-config = configparser.ConfigParser()
-config.read("../../config.ini")
-num_files = int(config["DEFAULT"]["NumberOfFiles"])
-password = config["DEFAULT"]["EncryptionKey"].encode()  #
-
-
-DOWNLOAD_DIRECTORY = "../../Decryptor/Downloads"
-# Ensure the base directory exists, if not, create it
-os.makedirs(DOWNLOAD_DIRECTORY, exist_ok=True)
-parts_directory = os.path.join(DOWNLOAD_DIRECTORY, "parts")
-os.makedirs(parts_directory, exist_ok=True)
 
 PIZZA_SLICE_ART = """
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣀⣀⠀⠀
@@ -43,58 +31,101 @@ PIZZA_SLICE_ART = """
         """
 
 
-def print_usage():
+def encrypt_and_split(file_path, output_dir, password, *, num_files=None, chunk_size=None):
+    """Encrypt *file_path* with AES-CBC and split into parts under *output_dir*.
+
+    Exactly one of *num_files* or *chunk_size* must be provided.
+
+    Args:
+        file_path:   Path to the plaintext file.
+        output_dir:  Directory where iv.bin, salt.bin, file.sha256 and parts/ are written.
+        password:    Encryption passphrase (bytes).
+        num_files:   Number of parts to produce.
+        chunk_size:  Target part size in bytes; num_files is derived from the encrypted size.
+
+    Returns:
+        The hex-encoded SHA-256 of the encrypted payload.
     """
-    Prints the expected usage
-    :return:
-    """
+    if (num_files is None) == (chunk_size is None):
+        raise ValueError("Provide exactly one of num_files or chunk_size.")
 
-    print("Slice")
-    print("Usage: python slice.py <file_to_encrypt>")
-    sys.exit(1)
+    parts_dir = os.path.join(output_dir, "parts")
+    os.makedirs(parts_dir, exist_ok=True)
 
+    with open(file_path, "rb") as f:
+        data = f.read()
 
-if len(sys.argv) != 2:
-    print_usage()
+    salt = os.urandom(16)
+    key = PBKDF2(password, salt, dkLen=16, count=100000, hmac_hash_module=SHA256)
 
-file_path = sys.argv[1]
+    iv = os.urandom(16)
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    ciphertext = cipher.encrypt(pad(data, AES.block_size))
 
-print(PIZZA_SLICE_ART)
+    with open(os.path.join(output_dir, "iv.bin"), "wb") as f:
+        f.write(iv)
 
-with open(file_path, "rb") as file:
-    data = file.read()
+    with open(os.path.join(output_dir, "salt.bin"), "wb") as f:
+        f.write(salt)
 
-salt = os.urandom(16)
-key: bytes = PBKDF2(password, salt, dkLen=16, count=100000, hmac_hash_module=SHA256)
+    enc_size = len(ciphertext)
+    if chunk_size is not None:
+        num_files = max(1, math.ceil(enc_size / chunk_size))
 
-iv = os.urandom(16)
-cipher = AES.new(key, AES.MODE_CBC, iv)
-ciphertext = cipher.encrypt(pad(data, AES.block_size))
+    base_size = enc_size // num_files
+    remainder = enc_size % num_files
 
-with open("../../Decryptor/Downloads/iv.bin", "wb") as iv_file:
-    iv_file.write(iv)
-
-with open("../../Decryptor/Downloads/salt.bin", "wb") as salt_file:
-    salt_file.write(salt)
-
-enc_file_path = f"{file_path}.enc"
-with open(enc_file_path, "wb") as enc_file:
-    enc_file.write(ciphertext)
-
-file_size = os.path.getsize(enc_file_path)
-chunk_size = file_size // num_files
-remainder = file_size % num_files
-
-# Open once and read sequentially — avoids seek-offset bugs with uneven chunk sizes
-with open(enc_file_path, "rb") as enc_file:
+    offset = 0
+    base_name = os.path.basename(file_path)
     for i in range(num_files):
-        part_size = chunk_size + (1 if i < remainder else 0)
-        chunk_data = enc_file.read(part_size)
-        part_file_path = os.path.join(parts_directory, f"{file_path}_part_{i}")
-        with open(part_file_path, "wb") as part_file:
-            print(f"Saving {part_file_path}")
-            part_file.write(chunk_data)
+        part_size = base_size + (1 if i < remainder else 0)
+        part_path = os.path.join(parts_dir, f"{base_name}_part_{i}")
+        with open(part_path, "wb") as f:
+            f.write(ciphertext[offset : offset + part_size])
+        print(f"Saving {part_path}")
+        offset += part_size
 
-print(f"Encrypted file split into {num_files} parts.")
-print("IV saved to iv.bin.")
-print("salt saved to salt.bin.")
+    # SHA-256 of the encrypted payload — written so downstream can verify reassembly
+    checksum = SHA256.new(ciphertext).hexdigest()
+    with open(os.path.join(output_dir, "file.sha256"), "w", encoding="utf-8") as f:
+        f.write(checksum + "\n")
+
+    print(f"Encrypted file split into {num_files} parts.")
+    print("IV saved to iv.bin.")
+    print("salt saved to salt.bin.")
+    print(f"SHA-256 ({checksum}) saved to file.sha256.")
+
+    return checksum
+
+
+def main():
+    print(PIZZA_SLICE_ART)
+
+    parser = argparse.ArgumentParser(
+        description="Encrypt and split a file for covert delivery.",
+    )
+    parser.add_argument("file", help="Path to the file to encrypt and split.")
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        metavar="BYTES",
+        help="Target size of each chunk in bytes. Overrides NumberOfFiles from config.ini.",
+    )
+    args = parser.parse_args()
+
+    config = configparser.ConfigParser()
+    config.read("../../config.ini")
+    password = config["DEFAULT"]["EncryptionKey"].encode()
+
+    output_dir = "../../Decryptor/Downloads"
+    os.makedirs(output_dir, exist_ok=True)
+
+    if args.chunk_size:
+        encrypt_and_split(args.file, output_dir, password, chunk_size=args.chunk_size)
+    else:
+        num_files = int(config["DEFAULT"]["NumberOfFiles"])
+        encrypt_and_split(args.file, output_dir, password, num_files=num_files)
+
+
+if __name__ == "__main__":
+    main()
