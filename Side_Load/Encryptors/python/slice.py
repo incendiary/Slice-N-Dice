@@ -31,7 +31,9 @@ PIZZA_SLICE_ART = """
         """
 
 
-def encrypt_and_split(file_path, output_dir, password, *, num_files=None, chunk_size=None):  # pylint: disable=too-many-locals
+def encrypt_and_split(
+    file_path, output_dir, password, *, num_files=None, chunk_size=None
+):  # pylint: disable=too-many-locals
     """Encrypt *file_path* with AES-CBC and split into parts under *output_dir*.
 
     Exactly one of *num_files* or *chunk_size* must be provided.
