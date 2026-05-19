@@ -16,4 +16,11 @@ jobs:
       - name: Install dependencies
         run: pip install pytest pytest-cov pycryptodome flask werkzeug configparser detect-secrets
       - name: Run tests
-        run: pytest tests/ -v --cov=. --cov-report=term-missing
+        run: pytest tests/ -v --cov=. --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false

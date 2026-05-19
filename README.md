@@ -1,5 +1,8 @@
 # Slice-N-Dice
 
+[![Tests](https://github.com/incendiary/Slice-N-Dice/actions/workflows/test.yml/badge.svg)](https://github.com/incendiary/Slice-N-Dice/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/incendiary/Slice-N-Dice/graph/badge.svg)](https://codecov.io/gh/incendiary/Slice-N-Dice)
+
 A toolkit for secure file encryption, splitting, and covert transfer — designed for red team operations. By fragmenting encrypted data streams across multiple HTTP transactions, it increases the complexity of detection and reassembly for blue teams.
 
 ## How It Works
@@ -182,13 +185,15 @@ DebugMode = Off
 | [#11](https://github.com/incendiary/Slice-N-Dice/issues/11) | ✅ Done (v1.0.2) | Document `USER_SUPPLIED_KEY` single-session design constraint |
 | [#12](https://github.com/incendiary/Slice-N-Dice/issues/12) | ✅ Done (v1.0.2) | Remove what-comments and redundant docstring noise from Python source files |
 | [#14](https://github.com/incendiary/Slice-N-Dice/issues/14) | 🔮 Future | Add unit tests for Side_Load/Decryptor/serve.py (zero coverage currently) |
-| — | 🔮 Future | Refactor `slice.py` into importable functions to enable unit testing |
+| [#24](https://github.com/incendiary/Slice-N-Dice/issues/24) | ✅ Done | End-to-end integration tests for encrypt → split → reassemble → decrypt pipeline |
+| [#25](https://github.com/incendiary/Slice-N-Dice/issues/25) | ✅ Done | `--chunk-size BYTES` CLI flag for `slice.py` (overrides `NumberOfFiles` from config) |
+| [#26](https://github.com/incendiary/Slice-N-Dice/issues/26) | ✅ Done | SHA-256 checksum of encrypted payload saved to `file.sha256` after splitting |
+| [#27](https://github.com/incendiary/Slice-N-Dice/issues/27) | ✅ Done | Coverage badge (Codecov) in README |
 | — | 🔮 Future | Fix IV reuse across file parts in upload mode |
 | — | 🔮 Future | Replace plaintext key transmission with a proper key-exchange mechanism |
 | — | 🔮 Future | Split uploads across multiple independent services |
 | — | 🔮 Future | User-selectable encryption algorithm |
 | — | 🔮 Future | Upload success/failure feedback to client |
-| — | 🔮 Future | Configurable split count and chunk size via CLI |
 
 ---
 
