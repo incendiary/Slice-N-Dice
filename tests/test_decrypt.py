@@ -39,9 +39,7 @@ reassemble_and_decrypt = _decrypt_mod.reassemble_and_decrypt
 
 _PASSWORD = b"roundtrip-passphrase"
 _PAYLOAD_SMALL = b"Hello, decryptor!" * 5
-_PAYLOAD_LARGE = (
-    b"Red team test payload - the quick brown fox jumps over the lazy dog." * 50
-)
+_PAYLOAD_LARGE = b"Red team test payload - the quick brown fox jumps over the lazy dog." * 50
 
 
 # ---------------------------------------------------------------------------
@@ -138,8 +136,6 @@ def test_checksum_mismatch_raises(tmp_path):
 
 def test_wrong_password_raises(tmp_path):
     """Decrypting with a different password must raise (unpad fails on bad padding)."""
-    from Crypto.Util.Padding import unpad  # pylint: disable=import-outside-toplevel
-
     src = tmp_path / "payload.bin"
     src.write_bytes(_PAYLOAD_SMALL)
     out = tmp_path / "recovered.bin"
