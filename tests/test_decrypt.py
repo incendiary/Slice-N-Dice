@@ -9,7 +9,7 @@ The two modules are imported directly (they are not on sys.path by default).
 import importlib.util
 import os
 
-import pytest
+import pytest  # pylint: disable=import-error
 
 # ---------------------------------------------------------------------------
 # Import slice.py and decrypt.py from their on-disk locations

@@ -8,7 +8,6 @@ back to the original plaintext.
 
 import argparse
 import configparser
-import math
 import os
 
 from Crypto.Cipher import AES
