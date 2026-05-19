@@ -14,7 +14,11 @@ import hashlib
 import importlib.util
 import os
 
-import pytest
+import pytest  # pylint: disable=import-error
+from Crypto.Cipher import AES as _AES  # pylint: disable=import-error
+from Crypto.Hash import SHA256 as _SHA256  # pylint: disable=import-error
+from Crypto.Protocol.KDF import PBKDF2 as _PBKDF2  # pylint: disable=import-error
+from Crypto.Util.Padding import unpad as _unpad  # pylint: disable=import-error
 
 # ---------------------------------------------------------------------------
 # Import slice.py once (it's not on sys.path by default)
@@ -51,11 +55,6 @@ def _reassemble(output_dir, base_name, num_parts):
 
 def _decrypt(ciphertext, output_dir):
     """AES-CBC decrypt using iv.bin / salt.bin written by encrypt_and_split."""
-    from Crypto.Cipher import AES as _AES
-    from Crypto.Hash import SHA256 as _SHA256
-    from Crypto.Protocol.KDF import PBKDF2 as _PBKDF2
-    from Crypto.Util.Padding import unpad as _unpad
-
     with open(os.path.join(output_dir, "iv.bin"), "rb") as f:
         iv = f.read()
     with open(os.path.join(output_dir, "salt.bin"), "rb") as f:
