@@ -16,7 +16,7 @@ from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Util.Padding import unpad
 
 
-def reassemble_and_decrypt(input_dir, output_path, password):
+def reassemble_and_decrypt(input_dir, output_path, password):  # pylint: disable=too-many-locals
     """Reassemble split parts and decrypt the AES-CBC ciphertext.
 
     Args:
